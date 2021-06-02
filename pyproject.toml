@@ -1,0 +1,63 @@
+[tool.poetry]
+name = "ATGQL"
+version = "0.1.0"
+description = "A Python port of graphql-js and dataloader"
+authors = ["iyanging <iyanging@163.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.812"
+pylint = "^2.8.3"
+pre-commit = "^2.13.0"
+commitizen = "^2.17.8"
+pytest = "^6.2.4"
+pytest-asyncio = "^0.15.1"
+codecov = "^2.1.11"
+pytest-cov = "^2.12.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+skip-string-normalization = true
+exclude = '''
+(
+  /(
+      \.git
+    | \.venv
+    | \.mypy_cache
+    | __pycache__
+  )
+)
+'''
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 100
+indent = '    '
+no_lines_before = 'LOCALFOLDER'
+combine_as_imports = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = [
+    "pyproject.toml:version",
+    "atgql/__init__.py:__version__"
+]
+tag_format = "v$version"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
