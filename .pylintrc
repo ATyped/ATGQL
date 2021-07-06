@@ -11,7 +11,7 @@ init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.app
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
-ignore=third_party
+ignore=
 
 # Add files or directories matching the regex patterns to the blacklist. The
 # regex matches against base names, not paths.
@@ -25,7 +25,7 @@ persistent=no
 load-plugins=
 
 # Use multiple processes to speed up Pylint.
-jobs=4
+jobs=0
 
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
