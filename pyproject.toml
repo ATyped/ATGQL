@@ -19,6 +19,7 @@ pytest-asyncio = "^0.15.1"
 codecov = "^2.1.11"
 pytest-cov = "^2.12.1"
 black = "^21.6-beta.0"
+isort = "^5.9.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
