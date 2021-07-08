@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+from typing import Final, Optional
 
 
 def dedent_block_string_value(raw_string: str) -> str:
@@ -11,10 +11,10 @@ def dedent_block_string_value(raw_string: str) -> str:
     """
 
     # Expand a block string's raw value into independent lines.
-    lines = re.split('\r\n|[\n\r]', raw_string)
+    lines: Final[list[str]] = re.split('\r\n|[\n\r]', raw_string)
 
     # Remove common indentation from all lines but first.
-    common_indent = get_block_string_indentation(raw_string)
+    common_indent: Final[int] = get_block_string_indentation(raw_string)
 
     if common_indent != 0:
         for i, _ in enumerate(lines):
@@ -80,11 +80,11 @@ def get_block_string_indentation(value: str) -> int:
 
 
 def print_block_string(value: str, prefer_multiple_lines: bool = False) -> str:
-    is_single_line = '\n' not in value
-    has_leading_space = value[0] == ' ' or value[0] == '\t'
-    has_trailing_quote = value[-1] == '"'
-    has_trailing_slash = value[-1] == '\\'
-    print_as_multiple_lines = (
+    is_single_line: Final[bool] = '\n' not in value
+    has_leading_space: Final[bool] = value[0] == ' ' or value[0] == '\t'
+    has_trailing_quote: Final[bool] = value[-1] == '"'
+    has_trailing_slash: Final[bool] = value[-1] == '\\'
+    print_as_multiple_lines: Final[bool] = (
         not is_single_line or has_trailing_quote or has_trailing_slash or prefer_multiple_lines
     )
 
