@@ -1,4 +1,5 @@
-from typing import Final, Optional, Sequence, Union, cast, overload
+from collections.abc import Sequence
+from typing import Final, Optional, Union, cast, overload
 
 MAX_SUGGESTIONS: Final[int] = 5
 

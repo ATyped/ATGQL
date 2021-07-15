@@ -4,6 +4,7 @@
 # Origin file is licensed by MIT License:
 # https://github.com/graphql-python/graphql-core/blob/v3.1.5/LICENSE
 
+from collections.abc import Sequence
 from inspect import (
     isasyncgen,
     isasyncgenfunction,
@@ -15,7 +16,7 @@ from inspect import (
     isgeneratorfunction,
     ismethod,
 )
-from typing import Any, Final, Sequence
+from typing import Any, Final
 
 MAX_RECURSIVE_DEPTH: Final[int] = 2
 MAX_STR_SIZE: Final[int] = 240
