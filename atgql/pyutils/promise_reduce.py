@@ -1,3 +1,5 @@
+__all__ = ['promise_reduce']
+
 from collections.abc import Iterable
 from typing import Callable, TypeVar, cast
 

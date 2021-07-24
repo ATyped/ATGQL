@@ -1,3 +1,5 @@
+__all__ = ['is_async_iterable']
+
 from collections.abc import AsyncIterable
 from typing import Any
 

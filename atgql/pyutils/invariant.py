@@ -1,3 +1,5 @@
+__all__ = ['invariant']
+
 from typing import Any, Optional
 
 

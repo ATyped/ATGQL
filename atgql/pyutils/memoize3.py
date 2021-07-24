@@ -1,3 +1,5 @@
+__all__ = ['memoize3']
+
 from collections.abc import Callable
 from typing import TypeVar, Union
 from weakref import WeakKeyDictionary

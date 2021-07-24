@@ -1,3 +1,5 @@
+__all__ = ['Path', 'add_path', 'path_to_array']
+
 from dataclasses import dataclass
 from typing import Optional, Union
 

@@ -1,3 +1,5 @@
+__all__ = ['suggestion_list']
+
 from collections.abc import Sequence
 from functools import cmp_to_key
 from math import floor

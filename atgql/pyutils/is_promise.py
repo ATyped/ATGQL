@@ -1,3 +1,5 @@
+__all__ = ['is_promise']
+
 import inspect
 from typing import TypeVar
 

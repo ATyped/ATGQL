@@ -1,3 +1,5 @@
+__all__ = ['identity_func']
+
 from typing import TypeVar
 
 T = TypeVar('T')

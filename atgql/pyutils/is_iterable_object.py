@@ -1,3 +1,5 @@
+__all__ = ['is_iterable_object']
+
 from collections.abc import Iterable
 from typing import Any
 

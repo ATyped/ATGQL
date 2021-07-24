@@ -1,3 +1,5 @@
+__all__ = ['is_object_like']
+
 from typing import Any
 
 from typing_extensions import TypeGuard

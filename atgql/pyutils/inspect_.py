@@ -4,6 +4,9 @@
 # Origin file is licensed by MIT License:
 # https://github.com/graphql-python/graphql-core/blob/v3.1.5/LICENSE
 
+__all__ = ['inspect']
+
+
 from collections.abc import Sequence
 from inspect import (
     isasyncgen,

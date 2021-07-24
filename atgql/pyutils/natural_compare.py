@@ -1,3 +1,5 @@
+__all__ = ['natural_compare']
+
 from itertools import takewhile
 
 

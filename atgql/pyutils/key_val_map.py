@@ -1,3 +1,5 @@
+__all__ = ['key_val_map']
+
 from collections.abc import Callable, Sequence
 from typing import Final, TypeVar
 

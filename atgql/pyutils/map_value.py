@@ -1,3 +1,5 @@
+__all__ = ['map_value']
+
 from collections.abc import Callable
 from typing import Final, TypeVar
 

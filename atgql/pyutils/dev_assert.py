@@ -1,3 +1,5 @@
+__all__ = ['dev_assert']
+
 from typing import Any, Final
 
 

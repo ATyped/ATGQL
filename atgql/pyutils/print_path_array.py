@@ -1,3 +1,5 @@
+__all__ = ['print_path_array']
+
 from collections.abc import Sequence
 from typing import Union
 

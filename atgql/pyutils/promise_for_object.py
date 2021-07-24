@@ -1,3 +1,5 @@
+__all__ = ['promise_for_object']
+
 import asyncio
 from typing import TypeVar
 
