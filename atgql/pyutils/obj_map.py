@@ -4,7 +4,7 @@ from typing import TypeVar
 T = TypeVar('T')
 
 ObjMap = MutableMapping[str, T]
-ObjMapLike = ObjMap
+ObjMapLike = ObjMap[T]
 
 ReadOnlyObjMap = Mapping[str, T]
-ReadOnlyObjMapLike = ReadOnlyObjMap
+ReadOnlyObjMapLike = ReadOnlyObjMap[T]
