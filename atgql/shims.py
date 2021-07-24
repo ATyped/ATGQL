@@ -1,3 +1,6 @@
 from collections.abc import Awaitable
+from typing import TypeVar
 
-Promise = Awaitable
+T = TypeVar('T')
+
+Promise = Awaitable[T]
