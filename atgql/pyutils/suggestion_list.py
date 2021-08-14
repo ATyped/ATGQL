@@ -74,11 +74,10 @@ class LexicalDistance:
         a = string_to_array(option_lower_case)
         b = self._input_array
 
+        if len(a) < len(b):
+            a, b = b, a
         a_length = len(a)
         b_length = len(b)
-
-        if a_length < b_length:
-            a, b = b, a
 
         rows = self._rows
         for j in range(b_length + 1):
