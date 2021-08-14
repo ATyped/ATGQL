@@ -60,6 +60,6 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: pytest -vv
+        entry: pytest -vv --cov=atgql --cov-report term-missing
         language: system
         pass_filenames: false
