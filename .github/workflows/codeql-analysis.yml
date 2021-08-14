@@ -42,6 +42,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: x64
+
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v1
