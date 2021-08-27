@@ -358,7 +358,7 @@ ASTVisitFn = Callable[
     Any,
 ]
 
-ASTNodeType = TypeVar('ASTNodeType', bound=ASTNode)
+ASTNodeType = TypeVar('ASTNodeType', bound=ASTNode, covariant=True)
 R = TypeVar('R')
 
 
@@ -371,179 +371,181 @@ class _NodeReducerWithoutEnter(Protocol[ASTNodeType, R]):
     leave: ASTReducerFn[ASTNodeType, R]
 
 
-_NodeReducer = Union[_NodeReducerWithEnter, _NodeReducerWithoutEnter]
+_NodeReducer = Union[
+    _NodeReducerWithEnter[ASTNodeType, R], _NodeReducerWithoutEnter[ASTNodeType, R]
+]
 
 
-class _NameReducer(Protocol):
-    name: _NodeReducer[NameNode]
+class _NameReducer(Protocol[R]):
+    name: _NodeReducer[NameNode, R]
 
 
-class _DocumentReducer(Protocol):
-    document: _NodeReducer[DocumentNode]
+class _DocumentReducer(Protocol[R]):
+    document: _NodeReducer[DocumentNode, R]
 
 
-class _OperationDefinitionReducer(Protocol):
-    operation_definition: _NodeReducer[OperationDefinitionNode]
+class _OperationDefinitionReducer(Protocol[R]):
+    operation_definition: _NodeReducer[OperationDefinitionNode, R]
 
 
-class _VariableDefinitionReducer(Protocol):
-    variable_definition: _NodeReducer[VariableDefinitionNode]
+class _VariableDefinitionReducer(Protocol[R]):
+    variable_definition: _NodeReducer[VariableDefinitionNode, R]
 
 
-class _VariableReducer(Protocol):
-    variable: _NodeReducer[VariableNode]
+class _VariableReducer(Protocol[R]):
+    variable: _NodeReducer[VariableNode, R]
 
 
-class _SelectionSetReducer(Protocol):
-    selection_set: _NodeReducer[SelectionSetNode]
+class _SelectionSetReducer(Protocol[R]):
+    selection_set: _NodeReducer[SelectionSetNode, R]
 
 
-class _FieldReducer(Protocol):
-    field: _NodeReducer[FieldNode]
+class _FieldReducer(Protocol[R]):
+    field: _NodeReducer[FieldNode, R]
 
 
-class _ArgumentReducer(Protocol):
-    argument: _NodeReducer[ArgumentNode]
+class _ArgumentReducer(Protocol[R]):
+    argument: _NodeReducer[ArgumentNode, R]
 
 
-class _FragmentSpreadReducer(Protocol):
-    fragment_spread: _NodeReducer[FragmentSpreadNode]
+class _FragmentSpreadReducer(Protocol[R]):
+    fragment_spread: _NodeReducer[FragmentSpreadNode, R]
 
 
-class _InlineFragmentReducer(Protocol):
-    inline_fragment: _NodeReducer[InlineFragmentNode]
+class _InlineFragmentReducer(Protocol[R]):
+    inline_fragment: _NodeReducer[InlineFragmentNode, R]
 
 
-class _FragmentDefinitionReducer(Protocol):
-    fragment_definition: _NodeReducer[FragmentDefinitionNode]
+class _FragmentDefinitionReducer(Protocol[R]):
+    fragment_definition: _NodeReducer[FragmentDefinitionNode, R]
 
 
-class _IntValueReducer(Protocol):
-    int_value: _NodeReducer[IntValueNode]
+class _IntValueReducer(Protocol[R]):
+    int_value: _NodeReducer[IntValueNode, R]
 
 
-class _FloatValueReducer(Protocol):
-    float_value: _NodeReducer[FloatValueNode]
+class _FloatValueReducer(Protocol[R]):
+    float_value: _NodeReducer[FloatValueNode, R]
 
 
-class _StringValueReducer(Protocol):
-    string_value: _NodeReducer[StringValueNode]
+class _StringValueReducer(Protocol[R]):
+    string_value: _NodeReducer[StringValueNode, R]
 
 
-class _BooleanValueReducer(Protocol):
-    boolean_value: _NodeReducer[BooleanValueNode]
+class _BooleanValueReducer(Protocol[R]):
+    boolean_value: _NodeReducer[BooleanValueNode, R]
 
 
-class _NullValueReducer(Protocol):
-    null_value: _NodeReducer[NullValueNode]
+class _NullValueReducer(Protocol[R]):
+    null_value: _NodeReducer[NullValueNode, R]
 
 
-class _EnumValueReducer(Protocol):
-    enum_value: _NodeReducer[EnumValueNode]
+class _EnumValueReducer(Protocol[R]):
+    enum_value: _NodeReducer[EnumValueNode, R]
 
 
-class _ListValueReducer(Protocol):
-    list_value: _NodeReducer[ListValueNode]
+class _ListValueReducer(Protocol[R]):
+    list_value: _NodeReducer[ListValueNode, R]
 
 
-class _ObjectValueReducer(Protocol):
-    object_value: _NodeReducer[ObjectValueNode]
+class _ObjectValueReducer(Protocol[R]):
+    object_value: _NodeReducer[ObjectValueNode, R]
 
 
-class _ObjectFieldReducer(Protocol):
-    object_field: _NodeReducer[ObjectFieldNode]
+class _ObjectFieldReducer(Protocol[R]):
+    object_field: _NodeReducer[ObjectFieldNode, R]
 
 
-class _DirectiveReducer(Protocol):
-    directive: _NodeReducer[DirectiveNode]
+class _DirectiveReducer(Protocol[R]):
+    directive: _NodeReducer[DirectiveNode, R]
 
 
-class _NamedTypeReducer(Protocol):
-    named_type: _NodeReducer[NamedTypeNode]
+class _NamedTypeReducer(Protocol[R]):
+    named_type: _NodeReducer[NamedTypeNode, R]
 
 
-class _ListTypeReducer(Protocol):
-    list_type: _NodeReducer[ListTypeNode]
+class _ListTypeReducer(Protocol[R]):
+    list_type: _NodeReducer[ListTypeNode, R]
 
 
-class _NonNullTypeReducer(Protocol):
-    non_null_type: _NodeReducer[NonNullTypeNode]
+class _NonNullTypeReducer(Protocol[R]):
+    non_null_type: _NodeReducer[NonNullTypeNode, R]
 
 
-class _SchemaDefinitionReducer(Protocol):
-    schema_definition: _NodeReducer[SchemaDefinitionNode]
+class _SchemaDefinitionReducer(Protocol[R]):
+    schema_definition: _NodeReducer[SchemaDefinitionNode, R]
 
 
-class _OperationTypeDefinitionReducer(Protocol):
-    operation_type_definition: _NodeReducer[OperationTypeDefinitionNode]
+class _OperationTypeDefinitionReducer(Protocol[R]):
+    operation_type_definition: _NodeReducer[OperationTypeDefinitionNode, R]
 
 
-class _ScalarTypeDefinitionReducer(Protocol):
-    scalar_type_definition: _NodeReducer[ScalarTypeDefinitionNode]
+class _ScalarTypeDefinitionReducer(Protocol[R]):
+    scalar_type_definition: _NodeReducer[ScalarTypeDefinitionNode, R]
 
 
-class _ObjectTypeDefinitionReducer(Protocol):
-    object_type_definition: _NodeReducer[ObjectTypeDefinitionNode]
+class _ObjectTypeDefinitionReducer(Protocol[R]):
+    object_type_definition: _NodeReducer[ObjectTypeDefinitionNode, R]
 
 
-class _FieldDefinitionReducer(Protocol):
-    field_definition: _NodeReducer[FieldDefinitionNode]
+class _FieldDefinitionReducer(Protocol[R]):
+    field_definition: _NodeReducer[FieldDefinitionNode, R]
 
 
-class _InputValueDefinitionReducer(Protocol):
-    input_value_definition: _NodeReducer[InputValueDefinitionNode]
+class _InputValueDefinitionReducer(Protocol[R]):
+    input_value_definition: _NodeReducer[InputValueDefinitionNode, R]
 
 
-class _InterfaceTypeDefinitionReducer(Protocol):
-    interface_type_definition: _NodeReducer[InterfaceTypeDefinitionNode]
+class _InterfaceTypeDefinitionReducer(Protocol[R]):
+    interface_type_definition: _NodeReducer[InterfaceTypeDefinitionNode, R]
 
 
-class _UnionTypeDefinitionReducer(Protocol):
-    union_type_definition: _NodeReducer[UnionTypeDefinitionNode]
+class _UnionTypeDefinitionReducer(Protocol[R]):
+    union_type_definition: _NodeReducer[UnionTypeDefinitionNode, R]
 
 
-class _EnumTypeDefinitionReducer(Protocol):
-    enum_type_definition: _NodeReducer[EnumTypeDefinitionNode]
+class _EnumTypeDefinitionReducer(Protocol[R]):
+    enum_type_definition: _NodeReducer[EnumTypeDefinitionNode, R]
 
 
-class _EnumValueDefinitionReducer(Protocol):
-    enum_value_definition: _NodeReducer[EnumValueDefinitionNode]
+class _EnumValueDefinitionReducer(Protocol[R]):
+    enum_value_definition: _NodeReducer[EnumValueDefinitionNode, R]
 
 
-class _InputObjectTypeDefinitionReducer(Protocol):
-    input_object_type_definition: _NodeReducer[InputObjectTypeDefinitionNode]
+class _InputObjectTypeDefinitionReducer(Protocol[R]):
+    input_object_type_definition: _NodeReducer[InputObjectTypeDefinitionNode, R]
 
 
-class _DirectiveDefinitionReducer(Protocol):
-    directive_definition: _NodeReducer[DirectiveDefinitionNode]
+class _DirectiveDefinitionReducer(Protocol[R]):
+    directive_definition: _NodeReducer[DirectiveDefinitionNode, R]
 
 
-class _SchemaExtensionReducer(Protocol):
-    schema_extension: _NodeReducer[SchemaExtensionNode]
+class _SchemaExtensionReducer(Protocol[R]):
+    schema_extension: _NodeReducer[SchemaExtensionNode, R]
 
 
-class _ScalarTypeExtensionReducer(Protocol):
-    scalar_type_extension: _NodeReducer[ScalarTypeExtensionNode]
+class _ScalarTypeExtensionReducer(Protocol[R]):
+    scalar_type_extension: _NodeReducer[ScalarTypeExtensionNode, R]
 
 
-class _ObjectTypeExtensionReducer(Protocol):
-    object_type_extension: _NodeReducer[ObjectTypeExtensionNode]
+class _ObjectTypeExtensionReducer(Protocol[R]):
+    object_type_extension: _NodeReducer[ObjectTypeExtensionNode, R]
 
 
-class _InterfaceTypeExtensionReducer(Protocol):
-    interface_type_extension: _NodeReducer[InterfaceTypeExtensionNode]
+class _InterfaceTypeExtensionReducer(Protocol[R]):
+    interface_type_extension: _NodeReducer[InterfaceTypeExtensionNode, R]
 
 
-class _UnionTypeExtensionReducer(Protocol):
-    union_type_extension: _NodeReducer[UnionTypeExtensionNode]
+class _UnionTypeExtensionReducer(Protocol[R]):
+    union_type_extension: _NodeReducer[UnionTypeExtensionNode, R]
 
 
-class _EnumTypeExtensionReducer(Protocol):
-    enum_type_extension: _NodeReducer[EnumTypeExtensionNode]
+class _EnumTypeExtensionReducer(Protocol[R]):
+    enum_type_extension: _NodeReducer[EnumTypeExtensionNode, R]
 
 
-class _InputObjectTypeExtensionReducer(Protocol):
-    input_object_type_extension: _NodeReducer[InputObjectTypeExtensionNode]
+class _InputObjectTypeExtensionReducer(Protocol[R]):
+    input_object_type_extension: _NodeReducer[InputObjectTypeExtensionNode, R]
 
 
 ASTReducer = Union[
@@ -594,9 +596,23 @@ ASTReducer = Union[
 
 TReducedNode = TypeVar('TReducedNode', bound=ASTNode, covariant=True)
 
-ASTReducerFn = Callable[[],...]
+
+ASTReducerFn = Callable[
+    [
+        ASTNodeType,
+        Optional[str | int],
+        Optional[ASTNode | Sequence[ASTNode]],
+        Sequence[str | int],
+        Sequence[ASTNode | Sequence[ASTNode]],
+    ],
+    R,
+]
 
 
+T = TypeVar('T')
+
+# TODO: re-consider implementation
+ReducedField = Union[Optional[T], Sequence[T], R]
 
 # ASTVisitor should not be defined here according to graphql-js,
 # but confined by Python's syntax, ASTNode can only refer the types defined above,

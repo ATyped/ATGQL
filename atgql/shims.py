@@ -25,7 +25,7 @@ for _name, _attr in getmembers(types, isclass):
     if issubclass(_attr, Callable):  # type: ignore[arg-type]
         callable_types.add(_attr)
     elif _attr in (
-        types.CellType,  # type: ignore[attr-defined]
+        types.CellType,
         types.ModuleType,
         types.MappingProxyType,
         types.SimpleNamespace,
