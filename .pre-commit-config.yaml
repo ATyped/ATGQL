@@ -30,11 +30,6 @@ repos:
         language: system
         types: [ python ]
 
-  - repo: https://github.com/pycqa/flake8
-    rev: 3.9.2
-    hooks:
-      - id: flake8
-
   - repo: local
     hooks:
       - id: mypy
