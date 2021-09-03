@@ -11,16 +11,17 @@ python = "^3.9"
 typing-extensions = "^3.10.0.2"
 
 [tool.poetry.dev-dependencies]
-mypy = "^0.910"
-pylint = "^2.10.2"
-pre-commit = "^2.14.0"
-commitizen = "^2.18.0"
-pytest = "^6.2.4"
-pytest-asyncio = "^0.15.1"
-codecov = "^2.1.12"
-pytest-cov = "^2.12.1"
-black = "^21.7b0"
-isort = "^5.9.3"
+mypy = "^0"
+pylint = "^2"
+pre-commit = "^2"
+commitizen = "^2"
+pytest = "^6"
+pytest-asyncio = "^0"
+codecov = "^2"
+pytest-cov = "^2"
+black = "*"
+isort = "*"
+ipython = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
