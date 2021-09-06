@@ -5,41 +5,14 @@ import types
 from abc import ABC
 from collections.abc import Awaitable, Callable, Iterable, MutableSequence
 from inspect import getmembers, isclass, signature
-from typing import Any, Generic, Literal, Optional, TypeVar, Union, cast, overload
-from typing_extensions import TypeGuard
 from numbers import Number
+from typing import Any, Generic, Literal, Optional, Type, TypeVar, Union, cast, overload
 
+from typing_extensions import TypeGuard
 
 _T = TypeVar('_T')
 
 Promise = Awaitable[_T]
-
-
-_boolean_types = (bool,)
-_number_types = (Number,)
-_string_types = (str,)
-_known_object_types = (
-    type(None),
-    # In Python3.9, mypy reports: Module has no attribute "CellType"  [attr-defined]
-    # But actually it is there.
-    types.CellType,  # type: ignore[attr-defined]
-    types.ModuleType,
-    types.MappingProxyType,
-    types.SimpleNamespace,
-)
-_symbol_types: tuple[type, ...] = tuple()
-
-_tmp_symbol_types = []
-for _name, _attr in getmembers(types, isclass):
-    if _name.startswith('_'):
-        continue
-
-    if _attr in _known_object_types:
-        pass
-    else:
-        _tmp_symbol_types.append(_attr)
-
-_symbol_types = tuple(_tmp_symbol_types)
 
 
 @overload
@@ -67,7 +40,12 @@ def typeof(value: None) -> Literal['object']:
     ...
 
 
-def typeof(value: Any) -> Literal['boolean', 'number', 'string', 'symbol', 'function', 'object']:
+@overload
+def typeof(value: Any) -> Literal['boolean', 'number', 'string', 'function', 'object']:
+    ...
+
+
+def typeof(value: Any) -> Literal['boolean', 'number', 'string', 'function', 'object']:
     """The simulator of `typeof` in JavaScript.
 
     JavaScript-side:
@@ -75,37 +53,14 @@ def typeof(value: Any) -> Literal['boolean', 'number', 'string', 'symbol', 'func
 
     Python-side:
     https://docs.python.org/3/library/types.html#standard-interpreter-types
-
-    Precondition:
-
-    | Types / Values                                                    | Result     | Assert By  |
-    |-------------------------------------------------------------------|------------|------------|
-    | bool (bool cannot have subclasses)                                | 'boolean'  | Type       |
-    | numbers.Number, and its subclasses                                | 'number'   | Type       |
-    | str, and its subclasses                                           | 'string'   | Type       |
-    | NoneType, CellType, ModuleType, MappingProxyType, SimpleNamespace | 'object'   | Type       |
-    | the other types in module types                                   | 'symbol'   | Type       |
-    | Callable                                                          | 'function' | Value      |
-    | any others                                                        | 'object'   | [fallback] |
-
-    Notes:
-
-    The reason why `CellType`, `ModuleType`, `MappingProxyType` and `SimpleNamespace`
-    are considered to be 'object', is that users can manually control its properties,
-    and `MappingProxyType`, which is seen as `dict`, is like the literal style in
-    JavaScript that defines object.
     """
 
-    if isinstance(value, _boolean_types):
+    if isinstance(value, bool):
         return 'boolean'
-    elif isinstance(value, _number_types):
+    elif isinstance(value, Number):
         return 'number'
-    elif isinstance(value, _string_types):
+    elif isinstance(value, str):
         return 'string'
-    elif isinstance(value, _known_object_types):
-        return 'object'
-    elif isinstance(value, _symbol_types):
-        return 'symbol'
     elif callable(value):
         return 'function'
     else:
@@ -212,3 +167,24 @@ class Array(MutableSequence[_T], ABC, Generic[_T]):
                     map_fn = cast(Callable[[_T, int], U], map_fn)
 
                     return [map_fn(e, i) for i, e in enumerate(iterable)]
+
+    @overload
+    def splice(self, start: int, /) -> MutableSequence[_T]:
+        ...
+
+    @overload
+    def splice(self, start: int, delete_count: int, /) -> MutableSequence[_T]:
+        ...
+
+    @overload
+    def splice(self, start: int, delete_count: int, *items: _T) -> MutableSequence[_T]:
+        ...
+
+    # mypy: Overloaded function implementation does not accept all possible arguments of signature 3
+    # pyright: 0 error, 0 warnings, 0 infos
+    def splice(self, *args: Any) -> MutableSequence[_T]:  # type: ignore[misc]
+        start = args[0]
+        delete_count = args[1] if len(args) >= 2 else 0
+        items: list[_T]  = [*args[2:]] if len(args) >= 3 else []
+
+        return self[:start] + items + self[start + delete_count:]

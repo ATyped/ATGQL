@@ -1,54 +1,55 @@
 from __future__ import annotations
+
+from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any, Callable, Final, Optional, Protocol, TypeVar, Union
 
 from atgql.language.ast import (
-    ASTNode,
-    NameNode,
-    DocumentNode,
-    OperationDefinitionNode,
-    VariableDefinitionNode,
-    VariableNode,
-    SelectionSetNode,
-    FieldNode,
     ArgumentNode,
+    ASTNode,
+    BooleanValueNode,
+    DirectiveDefinitionNode,
+    DirectiveNode,
+    DocumentNode,
+    EnumTypeDefinitionNode,
+    EnumTypeExtensionNode,
+    EnumValueDefinitionNode,
+    EnumValueNode,
+    FieldDefinitionNode,
+    FieldNode,
+    FloatValueNode,
+    FragmentDefinitionNode,
     FragmentSpreadNode,
     InlineFragmentNode,
-    FragmentDefinitionNode,
-    IntValueNode,
-    FloatValueNode,
-    StringValueNode,
-    BooleanValueNode,
-    NullValueNode,
-    EnumValueNode,
-    ListValueNode,
-    ObjectValueNode,
-    ObjectFieldNode,
-    DirectiveNode,
-    NamedTypeNode,
-    ListTypeNode,
-    NonNullTypeNode,
-    SchemaDefinitionNode,
-    OperationTypeDefinitionNode,
-    ScalarTypeDefinitionNode,
-    ObjectTypeDefinitionNode,
-    FieldDefinitionNode,
+    InputObjectTypeDefinitionNode,
+    InputObjectTypeExtensionNode,
     InputValueDefinitionNode,
     InterfaceTypeDefinitionNode,
-    UnionTypeDefinitionNode,
-    EnumTypeDefinitionNode,
-    EnumValueDefinitionNode,
-    InputObjectTypeDefinitionNode,
-    DirectiveDefinitionNode,
-    SchemaExtensionNode,
-    ScalarTypeExtensionNode,
-    ObjectTypeExtensionNode,
     InterfaceTypeExtensionNode,
+    IntValueNode,
+    ListTypeNode,
+    ListValueNode,
+    NamedTypeNode,
+    NameNode,
+    NonNullTypeNode,
+    NullValueNode,
+    ObjectFieldNode,
+    ObjectTypeDefinitionNode,
+    ObjectTypeExtensionNode,
+    ObjectValueNode,
+    OperationDefinitionNode,
+    OperationTypeDefinitionNode,
+    ScalarTypeDefinitionNode,
+    ScalarTypeExtensionNode,
+    SchemaDefinitionNode,
+    SchemaExtensionNode,
+    SelectionSetNode,
+    StringValueNode,
+    UnionTypeDefinitionNode,
     UnionTypeExtensionNode,
-    EnumTypeExtensionNode,
-    InputObjectTypeExtensionNode,
+    VariableDefinitionNode,
+    VariableNode,
 )
-from typing import Any, Callable, Final, Optional, Protocol, TypeVar, Union
-from collections.abc import Sequence
 
 # ASTVisitor should be defined here according to graphql-js,
 # but confined by Python's syntax, ASTNode cannot refer the types defined below,
@@ -343,18 +344,18 @@ ASTVisitFn = Callable[
         TVisitedNode,
         # key
         # The index or key to this node from the parent node or Array.
-        Optional[str | int],
+        Optional[Union[str, int]],
         # parent
         # The parent immediately above this node, which may be an Array.
         Optional[ASTNode],
         # path
         # The key path to get to this node from the root node.
-        Sequence[str | int],
+        Sequence[Union[str, int]],
         # ancestors
         # All nodes and Arrays visited before reaching parent of this node.
         # These correspond to array indices in `path`.
         # Note: ancestors includes arrays which contain the parent of visited node.
-        Sequence[ASTNode | Sequence[ASTNode]],
+        Sequence[Union[ASTNode, Sequence[ASTNode]]],
     ],
     Any,
 ]
@@ -686,6 +687,7 @@ query_document_keys: Final = {
     'InputObjectTypeExtension': ['name', 'directives', 'fields'],
 }
 
+
 @dataclass
 class _Stack:
     in_array: bool
@@ -698,6 +700,35 @@ class _Stack:
 def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
     stack: Optional[_Stack] = None
     in_array = isinstance(root, Sequence)
+    keys = [root]
+    index = -1
+    edits = []
+    node = None
+    key = None
+    parent = None
+    path = []
+    ancestors = []
+    new_root = root
+
+    while True:
+        index += 1
+        is_leaving: Final = index == len(keys)
+        is_edited: Final = is_leaving and len(edits) != 0
+        if is_leaving:
+            key = None if len(ancestors) == 0 else path[-1]
+            node = parent
+            parent = ancestors.pop()
+            if is_edited:
+                node = node[:] if in_array else copy(node)  # TODO
+                edit_offset = 0
+                for ii in range(len(edits)):
+                    edit_key = edits[ii][0]
+                    edit_value = edits[ii][1]
+                    if in_array:
+                        edit_key -= edit_offset
+
+                    if in_array and edit_value is None:
+                        node.sp
 
 
 #  visit() will walk through an AST using a depth-first traversal, calling
