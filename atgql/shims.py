@@ -73,7 +73,7 @@ S = TypeVar('S')
 
 class Array(MutableSequence[_T], ABC, Generic[_T]):
     @staticmethod
-    def is_array(value: Any) -> TypeGuard[MutableSequence[_T]]:
+    def is_array(value: Union[MutableSequence[_T], Any]) -> TypeGuard[MutableSequence[_T]]:
         return isinstance(value, MutableSequence) and not isinstance(value, str)
 
     @overload
@@ -185,6 +185,9 @@ class Array(MutableSequence[_T], ABC, Generic[_T]):
     def splice(self, *args: Any) -> MutableSequence[_T]:  # type: ignore[misc]
         start = args[0]
         delete_count = args[1] if len(args) >= 2 else 0
-        items: list[_T]  = [*args[2:]] if len(args) >= 3 else []
+        items = [*args[2:]] if len(args) >= 3 else []
 
-        return self[:start] + items + self[start + delete_count:]
+        result = self[:start]
+        result.extend(items)
+        result.extend(self[start + delete_count:])
+        return result

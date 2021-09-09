@@ -1,4 +1,6 @@
 from __future__ import annotations
+from atgql.pyutils.inspect_ import inspect
+from atgql.shims import Array
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -49,6 +51,7 @@ from atgql.language.ast import (
     UnionTypeExtensionNode,
     VariableDefinitionNode,
     VariableNode,
+    is_node,
 )
 
 # ASTVisitor should be defined here according to graphql-js,
@@ -693,7 +696,7 @@ class _Stack:
     in_array: bool
     index: int
     keys: list[ASTNode]
-    edits: list[tuple[str | int, Any]]
+    edits: list[tuple[str | int, ASTNode]]
     prev: Optional[_Stack]
 
 
@@ -728,8 +731,56 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                         edit_key -= edit_offset
 
                     if in_array and edit_value is None:
-                        node.sp
+                        Array.splice(node, edit_key, 1)
+                        edit_offset += 1
+                    else:
+                        node[edit_key] = edit_value
 
+            index = stack.index
+            keys = stack.keys
+            edits = stack.edits
+            in_array = stack.in_array
+            stack = stack.prev
+        else:
+            key = (index if in_array else keys[index]) if parent else None
+            node = parent[key] if parent else new_root
+            if node is None:
+                continue
+            if parent is not None:
+                path.push(key)
+            
+        if not Array.is_array(node):
+            if not is_node(node):
+                raise Exception(f'Invalid AST Node: {inspect(node)}.')
+            visit_fn: Final = get_visit_fn(visitor, node.kind, is_leaving)
+            if visit_fn is not None:
+                result = visit_fn(visitor, node, key, parent, path, ancestors)
+
+                if result is BREAK:
+                    break
+
+                if result is False:
+                    if not is_leaving:
+                        path.pop()
+                        continue
+                elif result is not None:
+                    edits.push([key, result])
+                    if not is_leaving:
+                        if is_node(result):
+                            node = result
+                        else:
+                            path.pop()
+                            continue
+
+        if result is None and is_edited:
+            edits.push([key, node])
+
+        if is_leaving:
+            path.pop()
+        else:
+            stack = _Stack(in_array=in_array, index=index, keys=keys, edits=edits, prev=stack)
+            in_array = Array.is_array(node)
+            keys = node if in_array else ([node.kind] or [])
 
 #  visit() will walk through an AST using a depth-first traversal, calling
 #  the visitor's enter function at each node in the traversal, and calling the
