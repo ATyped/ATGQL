@@ -3,10 +3,11 @@ __all__ = ['Promise', 'typeof', 'Array']
 
 import types
 from abc import ABC
-from collections.abc import Awaitable, Callable, Iterable, MutableSequence
-from inspect import getmembers, isclass, signature
+from collections.abc import Awaitable, Callable, Iterable, MutableSequence, Sequence
+from inspect import signature
+from math import inf
 from numbers import Number
-from typing import Any, Generic, Literal, Optional, Type, TypeVar, Union, cast, overload
+from typing import Any, Generic, Literal, Optional, TypeVar, Union, cast, overload
 
 from typing_extensions import TypeGuard
 
@@ -72,9 +73,19 @@ S = TypeVar('S')
 
 
 class Array(MutableSequence[_T], ABC, Generic[_T]):
+    @overload
     @staticmethod
     def is_array(value: Union[MutableSequence[_T], Any]) -> TypeGuard[MutableSequence[_T]]:
-        return isinstance(value, MutableSequence) and not isinstance(value, str)
+        ...
+
+    @overload
+    @staticmethod
+    def is_array(value: Union[Sequence[_T], Any]) -> TypeGuard[Sequence[_T]]:
+        ...
+
+    @staticmethod
+    def is_array(value: Any) -> bool:
+        return isinstance(value, Sequence) and not isinstance(value, str)
 
     @overload
     @staticmethod
@@ -169,25 +180,65 @@ class Array(MutableSequence[_T], ABC, Generic[_T]):
                     return [map_fn(e, i) for i, e in enumerate(iterable)]
 
     @overload
-    def splice(self, start: int, /) -> MutableSequence[_T]:
+    @staticmethod
+    def splice(this: MutableSequence[_T], start: int, /) -> MutableSequence[_T]:
         ...
 
     @overload
-    def splice(self, start: int, delete_count: int, /) -> MutableSequence[_T]:
+    @staticmethod
+    def splice(this: MutableSequence[_T], start: int, delete_count: int, /) -> MutableSequence[_T]:
         ...
 
     @overload
-    def splice(self, start: int, delete_count: int, *items: _T) -> MutableSequence[_T]:
+    @staticmethod
+    def splice(
+        this: MutableSequence[_T], start: int, delete_count: int, *items: _T
+    ) -> MutableSequence[_T]:
         ...
 
     # mypy: Overloaded function implementation does not accept all possible arguments of signature 3
     # pyright: 0 error, 0 warnings, 0 infos
-    def splice(self, *args: Any) -> MutableSequence[_T]:  # type: ignore[misc]
+    @staticmethod  # type: ignore[misc]
+    def splice(this: MutableSequence[_T], *args: Any) -> MutableSequence[_T]:
         start = args[0]
-        delete_count = args[1] if len(args) >= 2 else 0
-        items = [*args[2:]] if len(args) >= 3 else []
+        delete_count = args[1] if len(args) >= 2 else None
+        items: Iterable[_T] = args[2:] if len(args) >= 3 else []
 
-        result = self[:start]
-        result.extend(items)
-        result.extend(self[start + delete_count:])
-        return result
+        # If greater than the length of the array, start will be set to the length of the array.
+        # If negative, it will begin that many elements from the end of the array.
+        # If start is negative infinity, it will begin from index 0.
+        self_length = len(this)
+        if start > self_length:
+            start = self_length
+        elif start == -inf:
+            start = 0
+
+        # If delete_count is omitted, or if its value is equal to or larger than len(self) - start,
+        # then all the elements from start to the end of the array will be deleted.
+        # If deleteCount is 0 or negative, no elements are removed.
+        length_to_be_processed = self_length - start
+        if delete_count is None or delete_count >= length_to_be_processed:
+            delete_count = length_to_be_processed
+        elif delete_count < 0:
+            delete_count = 0
+
+        end = start + delete_count
+        removed = this[start:end]
+        this[start:end] = items
+
+        return removed
+
+
+class UndefinedType:
+    ...
+
+
+undefined = UndefinedType()
+
+
+class Object:
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        return setattr(self, key, value)

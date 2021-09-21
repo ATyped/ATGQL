@@ -4,17 +4,12 @@ from collections.abc import Callable
 from typing import TypeVar, Union
 from weakref import WeakKeyDictionary
 
+from atgql.shims import UndefinedType, undefined
+
 A1 = TypeVar('A1')
 A2 = TypeVar('A2')
 A3 = TypeVar('A3')
 R = TypeVar('R')
-
-
-class _UndefinedType:
-    ...
-
-
-_undefined = _UndefinedType()
 
 
 def memoize3(fn: Callable[[A1, A2, A3], R]) -> Callable[[A1, A2, A3], R]:
@@ -36,8 +31,8 @@ def memoize3(fn: Callable[[A1, A2, A3], R]) -> Callable[[A1, A2, A3], R]:
             cache2 = WeakKeyDictionary()
             cache1[a2] = cache2
 
-        fn_result: Union[_UndefinedType, R] = cache2.get(a3, _undefined)
-        if isinstance(fn_result, _UndefinedType):
+        fn_result: Union[UndefinedType, R] = cache2.get(a3, undefined)
+        if isinstance(fn_result, UndefinedType):
             fn_result = fn(a1, a2, a3)
             cache2[a3] = fn_result
 

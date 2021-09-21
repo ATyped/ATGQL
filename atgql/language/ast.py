@@ -3,20 +3,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import (
-    Any,
-    Final,
-    Literal,
-    Optional,
-    TypedDict,
-    Union,
-    cast,
-    get_args,
-)
+from typing import Any, Final, Literal, Optional, TypedDict, Union, cast, get_args
+
 from typing_extensions import TypeGuard
 
 from atgql.language.source import Source
 from atgql.language.token_kind import TokenKindEnum
+from atgql.shims import Object
 
 
 class Location:
@@ -135,7 +128,7 @@ def is_node(maybe_node: Any) -> TypeGuard[ASTNode]:
 
 
 @dataclass(frozen=True)
-class NameNode:
+class NameNode(Object):
     kind: Literal['Name'] = field(default='Name', init=False)
     loc: Optional[Location]
     value: str
@@ -145,7 +138,7 @@ class NameNode:
 
 
 @dataclass(frozen=True)
-class DocumentNode:
+class DocumentNode(Object):
     kind: Literal['Document'] = field(default='Document', init=False)
     loc: Optional[Location]
     definitions: Sequence[DefinitionNode]
@@ -157,7 +150,7 @@ class DocumentNode:
 
 
 @dataclass(frozen=True)
-class OperationDefinitionNode:
+class OperationDefinitionNode(Object):
     kind: Literal['OperationDefinition'] = field(default='OperationDefinition', init=False)
     loc: Optional[Location]
     operation: OperationTypeNode
@@ -171,7 +164,7 @@ OperationTypeNode = Literal['query', 'mutation', 'subscription']
 
 
 @dataclass(frozen=True)
-class VariableDefinitionNode:
+class VariableDefinitionNode(Object):
     kind: Literal['VariableDefinition'] = field(default='VariableDefinition', init=False)
     loc: Optional[Location]
     variable: VariableNode
@@ -181,14 +174,14 @@ class VariableDefinitionNode:
 
 
 @dataclass(frozen=True)
-class VariableNode:
+class VariableNode(Object):
     kind: Literal['Variable'] = field(default='Variable', init=False)
     loc: Optional[Location]
     name: NameNode
 
 
 @dataclass(frozen=True)
-class SelectionSetNode:
+class SelectionSetNode(Object):
     kind: Literal['SelectionSet'] = field(default='SelectionSet', init=False)
     loc: Optional[Location]
     selections: Sequence[SelectionNode]
@@ -200,7 +193,7 @@ class SelectionSetNode:
 
 
 @dataclass(frozen=True)
-class FieldNode:
+class FieldNode(Object):
     kind: Literal['Field'] = field(default='Field', init=False)
     loc: Optional[Location]
     alias: Optional[NameNode]
@@ -211,7 +204,7 @@ class FieldNode:
 
 
 @dataclass(frozen=True)
-class ArgumentNode:
+class ArgumentNode(Object):
     kind: Literal['Argument'] = field(default='Argument', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -219,7 +212,7 @@ class ArgumentNode:
 
 
 @dataclass(frozen=True)
-class ConstArgumentNode:
+class ConstArgumentNode(Object):
     kind: Literal['Argument'] = field(default='Argument', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -230,7 +223,7 @@ class ConstArgumentNode:
 
 
 @dataclass(frozen=True)
-class FragmentSpreadNode:
+class FragmentSpreadNode(Object):
     kind: Literal['FragmentSpread'] = field(default='FragmentSpread', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -238,7 +231,7 @@ class FragmentSpreadNode:
 
 
 @dataclass(frozen=True)
-class InlineFragmentNode:
+class InlineFragmentNode(Object):
     kind: Literal['InlineFragment'] = field(default='InlineFragment', init=False)
     loc: Optional[Location]
     type_condition: Optional[NamedTypeNode]
@@ -247,7 +240,7 @@ class InlineFragmentNode:
 
 
 @dataclass(frozen=True)
-class FragmentDefinitionNode:
+class FragmentDefinitionNode(Object):
     kind: Literal['FragmentDefinition'] = field(default='FragmentDefinition', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -267,21 +260,21 @@ class FragmentDefinitionNode:
 
 
 @dataclass(frozen=True)
-class IntValueNode:
+class IntValueNode(Object):
     kind: Literal['IntValue'] = field(default='IntValue', init=False)
     loc: Optional[Location]
     value: str
 
 
 @dataclass(frozen=True)
-class FloatValueNode:
+class FloatValueNode(Object):
     kind: Literal['FloatValue'] = field(default='FloatValue', init=False)
     loc: Optional[Location]
     value: str
 
 
 @dataclass(frozen=True)
-class StringValueNode:
+class StringValueNode(Object):
     kind: Literal['StringValue'] = field(default='StringValue', init=False)
     loc: Optional[Location]
     value: str
@@ -289,55 +282,55 @@ class StringValueNode:
 
 
 @dataclass(frozen=True)
-class BooleanValueNode:
+class BooleanValueNode(Object):
     kind: Literal['BoolValue'] = field(default='BoolValue', init=False)
     loc: Optional[Location]
     value: bool
 
 
 @dataclass(frozen=True)
-class NullValueNode:
+class NullValueNode(Object):
     kind: Literal['NullValue'] = field(default='NullValue', init=False)
     loc: Optional[Location]
 
 
 @dataclass(frozen=True)
-class EnumValueNode:
+class EnumValueNode(Object):
     kind: Literal['EnumValue'] = field(default='EnumValue', init=False)
     loc: Optional[Location]
     value: str
 
 
 @dataclass(frozen=True)
-class ListValueNode:
+class ListValueNode(Object):
     kind: Literal['ListValue'] = field(default='ListValue', init=False)
     loc: Optional[Location]
     values: Sequence[ValueNode]
 
 
 @dataclass(frozen=True)
-class ConstListValueNode:
+class ConstListValueNode(Object):
     kind: Literal['ListValue'] = field(default='ListValue', init=False)
     loc: Optional[Location]
     values: Sequence[ConstValueNode]
 
 
 @dataclass(frozen=True)
-class ObjectValueNode:
+class ObjectValueNode(Object):
     kind: Literal['ObjectValue'] = field(default='ObjectValue', init=False)
     loc: Optional[Location]
     fields: Sequence[ObjectFieldNode]
 
 
 @dataclass(frozen=True)
-class ConstObjectValueNode:
+class ConstObjectValueNode(Object):
     kind: Literal['ObjectValue'] = field(default='ObjectValue', init=False)
     loc: Optional[Location]
     fields: Sequence[ConstObjectFieldNode]
 
 
 @dataclass(frozen=True)
-class ObjectFieldNode:
+class ObjectFieldNode(Object):
     kind: Literal['ObjectField'] = field(default='ObjectField', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -345,7 +338,7 @@ class ObjectFieldNode:
 
 
 @dataclass(frozen=True)
-class ConstObjectFieldNode:
+class ConstObjectFieldNode(Object):
     kind: Literal['ObjectField'] = field(default='ObjectField', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -356,7 +349,7 @@ class ConstObjectFieldNode:
 
 
 @dataclass(frozen=True)
-class DirectiveNode:
+class DirectiveNode(Object):
     kind: Literal['Directive'] = field(default='Directive', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -364,7 +357,7 @@ class DirectiveNode:
 
 
 @dataclass(frozen=True)
-class ConstDirectiveNode:
+class ConstDirectiveNode(Object):
     kind: Literal['Directive'] = field(default='Directive', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -379,21 +372,21 @@ class ConstDirectiveNode:
 
 
 @dataclass(frozen=True)
-class NamedTypeNode:
+class NamedTypeNode(Object):
     kind: Literal['NamedType'] = field(default='NamedType', init=False)
     loc: Optional[Location]
     name: NameNode
 
 
 @dataclass(frozen=True)
-class ListTypeNode:
+class ListTypeNode(Object):
     kind: Literal['ListType'] = field(default='ListType', init=False)
     loc: Optional[Location]
     type: TypeNode
 
 
 @dataclass(frozen=True)
-class NonNullTypeNode:
+class NonNullTypeNode(Object):
     kind: Literal['NonNullType'] = field(default='NonNullType', init=False)
     loc: Optional[Location]
     type: Union[NamedTypeNode, ListTypeNode]
@@ -408,7 +401,7 @@ class NonNullTypeNode:
 
 
 @dataclass(frozen=True)
-class SchemaDefinitionNode:
+class SchemaDefinitionNode(Object):
     kind: Literal['SchemaDefinition'] = field(default='SchemaDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -417,7 +410,7 @@ class SchemaDefinitionNode:
 
 
 @dataclass(frozen=True)
-class OperationTypeDefinitionNode:
+class OperationTypeDefinitionNode(Object):
     kind: Literal['OperationTypeDefinition'] = field(default='OperationTypeDefinition', init=False)
     loc: Optional[Location]
     operation: OperationTypeNode
@@ -433,7 +426,7 @@ class OperationTypeDefinitionNode:
 
 
 @dataclass(frozen=True)
-class ScalarTypeDefinitionNode:
+class ScalarTypeDefinitionNode(Object):
     kind: Literal['ScalarTypeDefinition'] = field(default='ScalarTypeDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -442,7 +435,7 @@ class ScalarTypeDefinitionNode:
 
 
 @dataclass(frozen=True)
-class ObjectTypeDefinitionNode:
+class ObjectTypeDefinitionNode(Object):
     kind: Literal['ObjectTypeDefinition'] = field(default='ObjectTypeDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -453,7 +446,7 @@ class ObjectTypeDefinitionNode:
 
 
 @dataclass(frozen=True)
-class FieldDefinitionNode:
+class FieldDefinitionNode(Object):
     kind: Literal['FieldDefinition'] = field(default='FieldDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -464,7 +457,7 @@ class FieldDefinitionNode:
 
 
 @dataclass(frozen=True)
-class InputValueDefinitionNode:
+class InputValueDefinitionNode(Object):
     kind: Literal['InputValueDefinition'] = field(default='InputValueDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -475,7 +468,7 @@ class InputValueDefinitionNode:
 
 
 @dataclass(frozen=True)
-class InterfaceTypeDefinitionNode:
+class InterfaceTypeDefinitionNode(Object):
     kind: Literal['InterfaceTypeDefinition'] = field(default='InterfaceTypeDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -486,7 +479,7 @@ class InterfaceTypeDefinitionNode:
 
 
 @dataclass(frozen=True)
-class UnionTypeDefinitionNode:
+class UnionTypeDefinitionNode(Object):
     kind: Literal['UnionTypeDefinition'] = field(default='UnionTypeDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -496,7 +489,7 @@ class UnionTypeDefinitionNode:
 
 
 @dataclass(frozen=True)
-class EnumTypeDefinitionNode:
+class EnumTypeDefinitionNode(Object):
     kind: Literal['EnumTypeDefinition'] = field(default='EnumTypeDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -506,7 +499,7 @@ class EnumTypeDefinitionNode:
 
 
 @dataclass(frozen=True)
-class EnumValueDefinitionNode:
+class EnumValueDefinitionNode(Object):
     kind: Literal['EnumValueDefinition'] = field(default='EnumValueDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -515,7 +508,7 @@ class EnumValueDefinitionNode:
 
 
 @dataclass(frozen=True)
-class InputObjectTypeDefinitionNode:
+class InputObjectTypeDefinitionNode(Object):
     kind: Literal['InputObjectTypeDefinition'] = field(
         default='InputObjectTypeDefinition', init=False
     )
@@ -530,7 +523,7 @@ class InputObjectTypeDefinitionNode:
 
 
 @dataclass(frozen=True)
-class DirectiveDefinitionNode:
+class DirectiveDefinitionNode(Object):
     kind: Literal['DirectiveDefinition'] = field(default='DirectiveDefinition', init=False)
     loc: Optional[Location]
     description: Optional[StringValueNode]
@@ -548,7 +541,7 @@ class DirectiveDefinitionNode:
 
 
 @dataclass(frozen=True)
-class SchemaExtensionNode:
+class SchemaExtensionNode(Object):
     kind: Literal['SchemaExtension'] = field(default='SchemaExtension', init=False)
     loc: Optional[Location]
     directives: Optional[Sequence[ConstDirectiveNode]]
@@ -564,7 +557,7 @@ class SchemaExtensionNode:
 
 
 @dataclass(frozen=True)
-class ScalarTypeExtensionNode:
+class ScalarTypeExtensionNode(Object):
     kind: Literal['ScalarTypeExtension'] = field(default='ScalarTypeExtension', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -572,7 +565,7 @@ class ScalarTypeExtensionNode:
 
 
 @dataclass(frozen=True)
-class ObjectTypeExtensionNode:
+class ObjectTypeExtensionNode(Object):
     kind: Literal['ObjectTypeExtension'] = field(default='ObjectTypeExtension', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -582,7 +575,7 @@ class ObjectTypeExtensionNode:
 
 
 @dataclass(frozen=True)
-class InterfaceTypeExtensionNode:
+class InterfaceTypeExtensionNode(Object):
     kind: Literal['InterfaceTypeExtension'] = field(default='InterfaceTypeExtension', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -592,7 +585,7 @@ class InterfaceTypeExtensionNode:
 
 
 @dataclass(frozen=True)
-class UnionTypeExtensionNode:
+class UnionTypeExtensionNode(Object):
     kind: Literal['UnionTypeExtension'] = field(default='UnionTypeExtension', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -601,7 +594,7 @@ class UnionTypeExtensionNode:
 
 
 @dataclass(frozen=True)
-class EnumTypeExtensionNode:
+class EnumTypeExtensionNode(Object):
     kind: Literal['EnumTypeExtension'] = field(default='EnumTypeExtension', init=False)
     loc: Optional[Location]
     name: NameNode
@@ -610,7 +603,7 @@ class EnumTypeExtensionNode:
 
 
 @dataclass(frozen=True)
-class InputObjectTypeExtensionNode:
+class InputObjectTypeExtensionNode(Object):
     kind: Literal['InputObjectTypeExtension'] = field(
         default='InputObjectTypeExtension', init=False
     )

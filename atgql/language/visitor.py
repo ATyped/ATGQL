@@ -1,10 +1,19 @@
 from __future__ import annotations
-from atgql.pyutils.inspect_ import inspect
-from atgql.shims import Array
 
 from collections.abc import Sequence
+from copy import copy
 from dataclasses import dataclass
-from typing import Any, Callable, Final, Optional, Protocol, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Final,
+    Optional,
+    Protocol,
+    TypeVar,
+    Union,
+    cast,
+    runtime_checkable,
+)
 
 from atgql.language.ast import (
     ArgumentNode,
@@ -53,6 +62,8 @@ from atgql.language.ast import (
     VariableNode,
     is_node,
 )
+from atgql.pyutils.inspect_ import inspect
+from atgql.shims import Array, UndefinedType, typeof, undefined
 
 # ASTVisitor should be defined here according to graphql-js,
 # but confined by Python's syntax, ASTNode cannot refer the types defined below,
@@ -321,18 +332,20 @@ KindVisitor = Union[
 ]
 
 
-TVisitedNode = TypeVar('TVisitedNode', bound=ASTNode, covariant=True)
+TVisitedNode = TypeVar('TVisitedNode', bound=ASTNode)
 
 
-class _EnterVisitor(Protocol[TVisitedNode]):
+@runtime_checkable
+class EnterVisitor(Protocol[TVisitedNode]):
     enter: ASTVisitFn[TVisitedNode]
 
 
-class _LeaveVisitor(Protocol[TVisitedNode]):
+@runtime_checkable
+class LeaveVisitor(Protocol[TVisitedNode]):
     leave: ASTVisitFn[TVisitedNode]
 
 
-EnterLeaveVisitor = Union[_EnterVisitor[TVisitedNode], _LeaveVisitor[TVisitedNode]]
+EnterLeaveVisitor = Union[EnterVisitor[TVisitedNode], LeaveVisitor[TVisitedNode]]
 
 
 # The reason why not define ASTVisitFn as Protocol, is that ASTVisitFn use TVisitedNode as argument,
@@ -342,6 +355,8 @@ EnterLeaveVisitor = Union[_EnterVisitor[TVisitedNode], _LeaveVisitor[TVisitedNod
 # during the visitor's traversal.
 ASTVisitFn = Callable[
     [
+        # self
+        Any,
         # node
         # The current node being visiting.
         TVisitedNode,
@@ -350,7 +365,7 @@ ASTVisitFn = Callable[
         Optional[Union[str, int]],
         # parent
         # The parent immediately above this node, which may be an Array.
-        Optional[ASTNode],
+        Optional[Union[ASTNode, list[ASTNode]]],
         # path
         # The key path to get to this node from the root node.
         Sequence[Union[str, int]],
@@ -604,6 +619,7 @@ R = TypeVar('R')
 
 # ASTReducerFn = Callable[
 #     [
+#         Any,
 #         ASTNodeType,
 #         Optional[str | int],
 #         Optional[ASTNode | Sequence[ASTNode]],
@@ -619,7 +635,7 @@ R = TypeVar('R')
 # ReducedField = Union[Optional[T], Sequence[T], R]
 
 
-query_document_keys: Final = {
+query_document_keys: Final[dict[str, Sequence[str]]] = {
     'Name': [],
     'Document': ['definitions'],
     'OperationDefinition': ['name', 'variable_definitions', 'directives', 'selection_set'],
@@ -691,49 +707,160 @@ query_document_keys: Final = {
 }
 
 
+class _BreakType:
+    ...
+
+
+BREAK: Final = _BreakType()
+
+
 @dataclass
 class _Stack:
     in_array: bool
     index: int
-    keys: list[ASTNode]
-    edits: list[tuple[str | int, ASTNode]]
+    keys: Union[Sequence[ASTNode], Sequence[str]]
+    edits: list[tuple[Union[str, int], Any]]
     prev: Optional[_Stack]
 
 
 def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
+    """
+    visit() will walk through an AST using a depth-first traversal, calling
+    the visitor's enter function at each node in the traversal, and calling the
+    leave function after visiting that node and all of its child nodes.
+
+    By returning different values from the enter and leave functions, the
+    behavior of the visitor can be altered, including skipping over a sub-tree of
+    the AST (by returning false), editing the AST by returning a value or null
+    to remove the value, or to stop the whole traversal by returning BREAK.
+
+    When using visit() to edit an AST, the original AST will not be modified, and
+    a new version of the AST with the changes applied will be returned from the
+    visit function.
+
+    ```ts
+    const editedAST = visit(ast, {
+      enter(node, key, parent, path, ancestors) {
+        // @return
+        //   undefined: no action
+        //   false: skip visiting this node
+        //   visitor.BREAK: stop visiting altogether
+        //   null: delete this node
+        //   any value: replace this node with the returned value
+      },
+      leave(node, key, parent, path, ancestors) {
+        // @return
+        //   undefined: no action
+        //   false: no action
+        //   visitor.BREAK: stop visiting altogether
+        //   null: delete this node
+        //   any value: replace this node with the returned value
+      }
+    });
+    ```
+
+    Alternatively to providing enter() and leave() functions, a visitor can
+    instead provide functions named the same as the kinds of AST nodes, or
+    enter/leave visitors at a named key, leading to three permutations of the
+    visitor API:
+
+    1) Named visitors triggered when entering a node of a specific kind.
+
+    ```ts
+    visit(ast, {
+      Kind(node) {
+        // enter the "Kind" node
+      }
+    })
+    ```
+
+    2) Named visitors that trigger upon entering and leaving a node of a specific kind.
+
+    ```ts
+    visit(ast, {
+      Kind: {
+        enter(node) {
+          // enter the "Kind" node
+        }
+        leave(node) {
+          // leave the "Kind" node
+        }
+      }
+    })
+    ```
+
+    3) Generic visitors that trigger upon entering and leaving any node.
+
+    ```ts
+    visit(ast, {
+      enter(node) {
+        // enter any node
+      },
+      leave(node) {
+        // leave any node
+      }
+    })
+    ```
+    """
+
     stack: Optional[_Stack] = None
-    in_array = isinstance(root, Sequence)
-    keys = [root]
+    in_array = Array.is_array(root)
+    keys: Union[Sequence[ASTNode], Sequence[str]] = [root]
     index = -1
-    edits = []
-    node = None
-    key = None
-    parent = None
-    path = []
-    ancestors = []
+    edits: list[tuple[Union[str, int], Any]] = []
+    node: Optional[Union[list[ASTNode], ASTNode]] = None
+    key: Optional[Union[str, int]] = None
+    parent: Optional[Union[ASTNode, list[ASTNode]]] = None
+    path: list[Union[str, int]] = []
+    ancestors: list[Union[ASTNode, list[ASTNode]]] = []
     new_root = root
 
     while True:
         index += 1
-        is_leaving: Final = index == len(keys)
-        is_edited: Final = is_leaving and len(edits) != 0
+        is_leaving = index == len(keys)
+        is_edited = is_leaving and len(edits) != 0
         if is_leaving:
+            # Type Guards
+            assert isinstance(stack, _Stack)
+
             key = None if len(ancestors) == 0 else path[-1]
             node = parent
             parent = ancestors.pop()
             if is_edited:
-                node = node[:] if in_array else copy(node)  # TODO
+                # node = node[:] if in_array else copy(node)
+                if in_array:
+                    # Type Guard
+                    assert isinstance(node, list)
+
+                    node = node[:]  # pylint: disable=unsubscriptable-object
+                else:
+                    # Type Guard
+                    assert is_node(node)
+
+                    node = copy(node)
+
                 edit_offset = 0
                 for ii in range(len(edits)):
                     edit_key = edits[ii][0]
                     edit_value = edits[ii][1]
                     if in_array:
+                        # Type Guard
+                        assert isinstance(edit_key, int)
+
                         edit_key -= edit_offset
 
                     if in_array and edit_value is None:
+                        # Type Guard
+                        assert isinstance(node, list)
+                        assert isinstance(edit_key, int)
+
                         Array.splice(node, edit_key, 1)
                         edit_offset += 1
                     else:
+                        # Type Guard
+                        assert isinstance(edit_key, str)
+                        assert is_node(node)
+
                         node[edit_key] = edit_value
 
             index = stack.index
@@ -742,18 +869,52 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
             in_array = stack.in_array
             stack = stack.prev
         else:
-            key = (index if in_array else keys[index]) if parent else None
-            node = parent[key] if parent else new_root
-            if node is None:
+            # key = (index if in_array else keys[index]) if parent is not None else None
+            if parent is not None:
+                if in_array:
+                    key = index
+                else:
+                    # Type Guard
+                    assert isinstance(keys[0], str)
+                    keys = cast(list[str], keys)
+
+                    key = keys[index]
+            else:
+                key = None
+
+            # node = parent[key] if parent is not None else new_root
+            if parent is not None:
+                if isinstance(parent, list):
+                    # Type Guard
+                    assert isinstance(key, int)
+
+                    node = parent[key]  # pylint: disable=unsubscriptable-object
+                else:  # is_node(parent)
+                    # Type Guard
+                    assert isinstance(key, str)
+
+                    node = parent[key]  # pylint: disable=unsubscriptable-object
+
+            else:
+                node = new_root
+
+            if node is None or node is undefined:
                 continue
             if parent is not None:
-                path.push(key)
-            
+                # Type Guard
+                assert key is not None
+
+                path.append(key)
+
+        result: Any = undefined
         if not Array.is_array(node):
             if not is_node(node):
                 raise Exception(f'Invalid AST Node: {inspect(node)}.')
-            visit_fn: Final = get_visit_fn(visitor, node.kind, is_leaving)
+            visit_fn = get_visit_fn(visitor, node.kind, is_leaving)
             if visit_fn is not None:
+                # Type Guard
+                assert parent is not None
+
                 result = visit_fn(visitor, node, key, parent, path, ancestors)
 
                 if result is BREAK:
@@ -763,8 +924,11 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                     if not is_leaving:
                         path.pop()
                         continue
-                elif result is not None:
-                    edits.push([key, result])
+                elif result is not undefined:
+                    # Type Guard
+                    assert key is not None
+
+                    edits.append((key, result))
                     if not is_leaving:
                         if is_node(result):
                             node = result
@@ -772,92 +936,42 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                             path.pop()
                             continue
 
-        if result is None and is_edited:
-            edits.push([key, node])
+        if result is undefined and is_edited:
+            # Type Guard
+            key = cast(Union[str, int], key)
+
+            edits.append((key, node))
 
         if is_leaving:
             path.pop()
         else:
             stack = _Stack(in_array=in_array, index=index, keys=keys, edits=edits, prev=stack)
             in_array = Array.is_array(node)
-            keys = node if in_array else ([node.kind] or [])
+            # keys = node if in_array else query_document_keys.get(node.kind, [])
+            if in_array:
+                # Type Guard
+                assert isinstance(node, list)
 
-#  visit() will walk through an AST using a depth-first traversal, calling
-#  the visitor's enter function at each node in the traversal, and calling the
-#  leave function after visiting that node and all of its child nodes.
-#
-#  By returning different values from the enter and leave functions, the
-#  behavior of the visitor can be altered, including skipping over a sub-tree of
-#  the AST (by returning false), editing the AST by returning a value or null
-#  to remove the value, or to stop the whole traversal by returning BREAK.
-#
-#  When using visit() to edit an AST, the original AST will not be modified, and
-#  a new version of the AST with the changes applied will be returned from the
-#  visit function.
-#
-#  ```ts
-#  const editedAST = visit(ast, {
-#    enter(node, key, parent, path, ancestors) {
-#      // @return
-#      //   undefined: no action
-#      //   false: skip visiting this node
-#      //   visitor.BREAK: stop visiting altogether
-#      //   null: delete this node
-#      //   any value: replace this node with the returned value
-#    },
-#    leave(node, key, parent, path, ancestors) {
-#      // @return
-#      //   undefined: no action
-#      //   false: no action
-#      //   visitor.BREAK: stop visiting altogether
-#      //   null: delete this node
-#      //   any value: replace this node with the returned value
-#    }
-#  });
-#  ```
-#
-#  Alternatively to providing enter() and leave() functions, a visitor can
-#  instead provide functions named the same as the kinds of AST nodes, or
-#  enter/leave visitors at a named key, leading to three permutations of the
-#  visitor API:
-#
-#  1) Named visitors triggered when entering a node of a specific kind.
-#
-#  ```ts
-#  visit(ast, {
-#    Kind(node) {
-#      // enter the "Kind" node
-#    }
-#  })
-#  ```
-#
-#  2) Named visitors that trigger upon entering and leaving a node of a specific kind.
-#
-#  ```ts
-#  visit(ast, {
-#    Kind: {
-#      enter(node) {
-#        // enter the "Kind" node
-#      }
-#      leave(node) {
-#        // leave the "Kind" node
-#      }
-#    }
-#  })
-#  ```
-#
-#  3) Generic visitors that trigger upon entering and leaving any node.
-#
-#  ```ts
-#  visit(ast, {
-#    enter(node) {
-#      // enter any node
-#    },
-#    leave(node) {
-#      // leave any node
-#    }
-#  })
-#  ```
+                keys = node
+            else:
+                # Type Guard
+                assert is_node(node)
+
+                keys = query_document_keys.get(node.kind, [])
+
+            index = -1
+            edits = []
+            if parent is not None:
+                ancestors.append(parent)
+            parent = node
+
+        if stack is None:
+            break
+
+    if len(edits) != 0:
+        new_root = edits[-1][1]
+
+    return new_root
 
 
 # ASTVisitor should not be defined here according to graphql-js,
@@ -867,3 +981,73 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
 # A visitor is provided to visit, it contains the collection of
 # relevant functions to be called during the visitor's traversal.
 ASTVisitor = Union[EnterLeaveVisitor[ASTNode], KindVisitor]
+
+
+def visit_in_parallel(visitors: Sequence[ASTVisitor]) -> ASTVisitor:
+    """
+    Creates a new visitor instance which delegates to many visitors to run in
+    parallel. Each visitor will be visited for each node before moving on.
+
+    If a prior visitor edits a node, no following visitors will see that node.
+    """
+
+    skipping: list[Optional[Union[UndefinedType, _BreakType, ASTNode]]] = [None] * len(visitors)
+
+    class _ParallelVisitor(EnterVisitor, LeaveVisitor):
+        def enter(self, *args):
+            node: Final[ASTNode] = args[0]
+            for i in range(len(visitors)):
+                if skipping[i] is None:
+                    fn = get_visit_fn(visitors[i], node.kind, False)
+                    if fn is not None:
+                        result = fn(visitors[i], *args)
+                        if result is False:
+                            skipping[i] = node
+                        elif result is BREAK:
+                            skipping[i] = BREAK
+                        elif result is not undefined:
+                            return result
+
+        def leave(self, *args):
+            node: Final[ASTNode] = args[0]
+            for i in range(len(visitors)):
+                if skipping[i] is None:
+                    fn = get_visit_fn(visitors[i], node.kind, True)
+                    if fn is not None:
+                        result = fn(visitors[i], *args)
+                        if result is BREAK:
+                            skipping[i] = BREAK
+                        elif result is not undefined and result is not None:
+                            return result
+
+                elif skipping[i] == node:
+                    skipping[i] = None
+
+    return _ParallelVisitor()
+
+
+def get_visit_fn(visitor: ASTVisitor, kind: str, is_leaving: bool) -> Optional[ASTVisitFn[ASTNode]]:
+    kind_visitor: Optional[ASTVisitFn[ASTNode] | EnterLeaveVisitor[ASTNode]] = getattr(
+        visitor, kind
+    )
+    if kind_visitor is not None:
+        if typeof(kind_visitor) == 'function':
+            if is_leaving:
+                return None
+            else:
+                kind_visitor = cast(ASTVisitFn[ASTNode], kind_visitor)
+                return kind_visitor
+
+        if is_leaving:
+            kind_visitor = cast(EnterVisitor[ASTNode], kind_visitor)
+            return kind_visitor.enter
+        else:
+            kind_visitor = cast(LeaveVisitor[ASTNode], kind_visitor)
+            return kind_visitor.leave
+
+    if is_leaving:
+        kind_visitor = cast(EnterVisitor[ASTNode], kind_visitor)
+        return kind_visitor.enter
+    else:
+        kind_visitor = cast(LeaveVisitor[ASTNode], kind_visitor)
+        return kind_visitor.leave
