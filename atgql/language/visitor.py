@@ -5,7 +5,6 @@ from copy import copy
 from dataclasses import dataclass
 from typing import (
     Any,
-    Callable,
     Final,
     Optional,
     Protocol,
@@ -332,16 +331,20 @@ KindVisitor = Union[
 ]
 
 
-TVisitedNode = TypeVar('TVisitedNode', bound=ASTNode)
+TVisitedNode = TypeVar('TVisitedNode', bound=ASTNode, covariant=True)
 
 
+# mypy complains: Covariant type variable "TVisitedNode" used in protocol where invariant one is expected.
+# but TVisitedNode, which is used as function parameter's type, should be covariant.
 @runtime_checkable
-class EnterVisitor(Protocol[TVisitedNode]):
+class EnterVisitor(Protocol[TVisitedNode]):  # type: ignore[misc]
     enter: ASTVisitFn[TVisitedNode]
 
 
+# mypy complains: Covariant type variable "TVisitedNode" used in protocol where invariant one is expected.
+# but TVisitedNode, which is used as function parameter's type, should be covariant.
 @runtime_checkable
-class LeaveVisitor(Protocol[TVisitedNode]):
+class LeaveVisitor(Protocol[TVisitedNode]):  # type: ignore[misc]
     leave: ASTVisitFn[TVisitedNode]
 
 
@@ -353,30 +356,46 @@ EnterLeaveVisitor = Union[EnterVisitor[TVisitedNode], LeaveVisitor[TVisitedNode]
 
 # A visitor is comprised of visit functions, which are called on each node
 # during the visitor's traversal.
-ASTVisitFn = Callable[
-    [
-        # self
-        Any,
-        # node
-        # The current node being visiting.
-        TVisitedNode,
-        # key
-        # The index or key to this node from the parent node or Array.
-        Optional[Union[str, int]],
-        # parent
-        # The parent immediately above this node, which may be an Array.
-        Optional[Union[ASTNode, list[ASTNode]]],
-        # path
-        # The key path to get to this node from the root node.
-        Sequence[Union[str, int]],
-        # ancestors
-        # All nodes and Arrays visited before reaching parent of this node.
-        # These correspond to array indices in `path`.
-        # Note: ancestors includes arrays which contain the parent of visited node.
-        Sequence[Union[ASTNode, Sequence[ASTNode]]],
-    ],
-    Any,
-]
+# ASTVisitFn = Callable[
+#     [
+#         # self
+#         Any,
+#         # node
+#         # The current node being visiting.
+#         TVisitedNode,
+#         # key
+#         # The index or key to this node from the parent node or Array.
+#         Optional[Union[str, int]],
+#         # parent
+#         # The parent immediately above this node, which may be an Array.
+#         Optional[Union[ASTNode, list[ASTNode]]],
+#         # path
+#         # The key path to get to this node from the root node.
+#         Sequence[Union[str, int]],
+#         # ancestors
+#         # All nodes and Arrays visited before reaching parent of this node.
+#         # These correspond to array indices in `path`.
+#         # Note: ancestors includes arrays which contain the parent of visited node.
+#         Sequence[Union[ASTNode, Sequence[ASTNode]]],
+#     ],
+#     Any,
+# ]
+
+
+_TVisitedNode1 = TypeVar('_TVisitedNode1', bound=ASTNode, contravariant=True)
+
+
+class ASTVisitFn(Protocol[_TVisitedNode1]):
+    def __call__(
+        self,
+        node: _TVisitedNode1,
+        key: Optional[Union[str, int]],
+        parent: Optional[Union[ASTNode, list[ASTNode]]],
+        path: Sequence[Union[str, int]],
+        ancestors: Sequence[Union[ASTNode, Sequence[ASTNode]]],
+    ) -> Any:
+        ...
+
 
 ASTNodeType = TypeVar('ASTNodeType', bound=ASTNode, covariant=True)
 R = TypeVar('R')
@@ -915,7 +934,7 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                 # Type Guard
                 assert parent is not None
 
-                result = visit_fn(visitor, node, key, parent, path, ancestors)
+                result = visit_fn(node, key, parent, path, ancestors)
 
                 if result is BREAK:
                     break
@@ -993,14 +1012,20 @@ def visit_in_parallel(visitors: Sequence[ASTVisitor]) -> ASTVisitor:
 
     skipping: list[Optional[Union[UndefinedType, _BreakType, ASTNode]]] = [None] * len(visitors)
 
-    class _ParallelVisitor(EnterVisitor, LeaveVisitor):
-        def enter(self, *args):
-            node: Final[ASTNode] = args[0]
+    class _ParallelVisitor(EnterVisitor[ASTNode], LeaveVisitor[ASTNode]):
+        def enter(
+            self,
+            node: ASTNode,
+            key: Optional[Union[str, int]],
+            parent: Optional[Union[ASTNode, list[ASTNode]]],
+            path: Sequence[Union[str, int]],
+            ancestors: Sequence[Union[ASTNode, Sequence[ASTNode]]],
+        ):
             for i in range(len(visitors)):
                 if skipping[i] is None:
                     fn = get_visit_fn(visitors[i], node.kind, False)
                     if fn is not None:
-                        result = fn(visitors[i], *args)
+                        result = fn(node, key, parent, path, ancestors)
                         if result is False:
                             skipping[i] = node
                         elif result is BREAK:
@@ -1008,13 +1033,19 @@ def visit_in_parallel(visitors: Sequence[ASTVisitor]) -> ASTVisitor:
                         elif result is not undefined:
                             return result
 
-        def leave(self, *args):
-            node: Final[ASTNode] = args[0]
+        def leave(
+            self,
+            node: ASTNode,
+            key: Optional[Union[str, int]],
+            parent: Optional[Union[ASTNode, list[ASTNode]]],
+            path: Sequence[Union[str, int]],
+            ancestors: Sequence[Union[ASTNode, Sequence[ASTNode]]],
+        ):
             for i in range(len(visitors)):
                 if skipping[i] is None:
                     fn = get_visit_fn(visitors[i], node.kind, True)
                     if fn is not None:
-                        result = fn(visitors[i], *args)
+                        result = fn(node, key, parent, path, ancestors)
                         if result is BREAK:
                             skipping[i] = BREAK
                         elif result is not undefined and result is not None:
@@ -1040,14 +1071,22 @@ def get_visit_fn(visitor: ASTVisitor, kind: str, is_leaving: bool) -> Optional[A
 
         if is_leaving:
             kind_visitor = cast(EnterVisitor[ASTNode], kind_visitor)
-            return kind_visitor.enter
+            # mypy complains: Incompatible return value type
+            # pyright: 0 errors, 0 warnings, 0 infos
+            return kind_visitor.enter  # type: ignore[return-value]
         else:
             kind_visitor = cast(LeaveVisitor[ASTNode], kind_visitor)
-            return kind_visitor.leave
+            # mypy complains: Incompatible return value type
+            # pyright: 0 errors, 0 warnings, 0 infos
+            return kind_visitor.leave  # type: ignore[return-value]
 
     if is_leaving:
         kind_visitor = cast(EnterVisitor[ASTNode], kind_visitor)
-        return kind_visitor.enter
+        # mypy complains: Incompatible return value type
+        # pyright: 0 errors, 0 warnings, 0 infos
+        return kind_visitor.enter  # type: ignore[return-value]
     else:
         kind_visitor = cast(LeaveVisitor[ASTNode], kind_visitor)
-        return kind_visitor.leave
+        # mypy complains: Incompatible return value type
+        # pyright: 0 errors, 0 warnings, 0 infos
+        return kind_visitor.leave  # type: ignore[return-value]

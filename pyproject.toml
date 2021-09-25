@@ -78,6 +78,10 @@ warn_unreachable = true
 
 show_error_codes = true
 
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.9"
+
 [tool.coverage.report]
 exclude_lines = [
   # Have to re-enable the standard pragma

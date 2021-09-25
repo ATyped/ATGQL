@@ -22,9 +22,12 @@ def test_iterator_is_not_array():
     assert not Array.is_array(iter([]))
 
 
-def test_iterable_is_not_array():
-    assert not Array.is_array((1,))
+def test_dict_is_not_array():
     assert not Array.is_array({1: 2})
+
+
+def test_tuple_is_not_array():
+    assert not Array.is_array((1,))
 
 
 def test_list_instance_is_array():

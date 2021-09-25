@@ -38,12 +38,15 @@ repos:
         language: system
         types: [ python ]
 
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.0
+  - repo: local
     hooks:
-      - id: bandit
-        args: [ -f, custom, -q ]
-        exclude: 'tests/'
+      - id: pyright
+        name: pyright
+        entry: pyright
+        language: node
+        pass_filenames: false
+        types: [ python ]
+        additional_dependencies: ['pyright@latest']
 
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v2.18.0

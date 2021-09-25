@@ -3,7 +3,7 @@ __all__ = ['Promise', 'typeof', 'Array']
 
 import types
 from abc import ABC
-from collections.abc import Awaitable, Callable, Iterable, MutableSequence, Sequence
+from collections.abc import Awaitable, Callable, Iterable, MutableSequence
 from inspect import signature
 from math import inf
 from numbers import Number
@@ -72,20 +72,10 @@ U = TypeVar('U')
 S = TypeVar('S')
 
 
-class Array(MutableSequence[_T], ABC, Generic[_T]):
-    @overload
+class Array(Generic[_T]):
     @staticmethod
     def is_array(value: Union[MutableSequence[_T], Any]) -> TypeGuard[MutableSequence[_T]]:
-        ...
-
-    @overload
-    @staticmethod
-    def is_array(value: Union[Sequence[_T], Any]) -> TypeGuard[Sequence[_T]]:
-        ...
-
-    @staticmethod
-    def is_array(value: Any) -> bool:
-        return isinstance(value, Sequence) and not isinstance(value, str)
+        return isinstance(value, MutableSequence) and not isinstance(value, str)
 
     @overload
     @staticmethod
@@ -181,18 +171,23 @@ class Array(MutableSequence[_T], ABC, Generic[_T]):
 
     @overload
     @staticmethod
-    def splice(this: MutableSequence[_T], start: int, /) -> MutableSequence[_T]:
-        ...
-
-    @overload
-    @staticmethod
-    def splice(this: MutableSequence[_T], start: int, delete_count: int, /) -> MutableSequence[_T]:
+    def splice(this: MutableSequence[_T], start: Union[int, float], /) -> MutableSequence[_T]:
         ...
 
     @overload
     @staticmethod
     def splice(
-        this: MutableSequence[_T], start: int, delete_count: int, *items: _T
+        this: MutableSequence[_T], start: Union[int, float], delete_count: Union[int, float], /
+    ) -> MutableSequence[_T]:
+        ...
+
+    @overload
+    @staticmethod
+    def splice(
+        this: MutableSequence[_T],
+        start: Union[int, float],
+        delete_count: Union[int, float],
+        *items: _T,
     ) -> MutableSequence[_T]:
         ...
 
@@ -201,17 +196,18 @@ class Array(MutableSequence[_T], ABC, Generic[_T]):
     @staticmethod  # type: ignore[misc]
     def splice(this: MutableSequence[_T], *args: Any) -> MutableSequence[_T]:
         start = args[0]
+        if isinstance(start, float):
+            start = round(start) if start != -inf else 0
         delete_count = args[1] if len(args) >= 2 else None
+        if isinstance(delete_count, float):
+            delete_count = round(delete_count)
         items: Iterable[_T] = args[2:] if len(args) >= 3 else []
 
         # If greater than the length of the array, start will be set to the length of the array.
         # If negative, it will begin that many elements from the end of the array.
         # If start is negative infinity, it will begin from index 0.
         self_length = len(this)
-        if start > self_length:
-            start = self_length
-        elif start == -inf:
-            start = 0
+        start = min(self_length, start)
 
         # If delete_count is omitted, or if its value is equal to or larger than len(self) - start,
         # then all the elements from start to the end of the array will be deleted.
