@@ -5,12 +5,14 @@ from copy import copy
 from dataclasses import dataclass
 from typing import (
     Any,
+    Callable,
     Final,
     Optional,
     Protocol,
     TypeVar,
     Union,
     cast,
+    Generic,
     runtime_checkable,
 )
 
@@ -331,70 +333,75 @@ KindVisitor = Union[
 ]
 
 
-TVisitedNode = TypeVar('TVisitedNode', bound=ASTNode, covariant=True)
+TVisitedNode = TypeVar('TVisitedNode', bound=ASTNode)
 
 
-# mypy complains: Covariant type variable "TVisitedNode" used in protocol where invariant one is expected.
-# but TVisitedNode, which is used as function parameter's type, should be covariant.
 @runtime_checkable
-class EnterVisitor(Protocol[TVisitedNode]):  # type: ignore[misc]
+class EnterVisitor(Protocol[TVisitedNode]):
     enter: ASTVisitFn[TVisitedNode]
 
 
-# mypy complains: Covariant type variable "TVisitedNode" used in protocol where invariant one is expected.
-# but TVisitedNode, which is used as function parameter's type, should be covariant.
 @runtime_checkable
-class LeaveVisitor(Protocol[TVisitedNode]):  # type: ignore[misc]
+class LeaveVisitor(Protocol[TVisitedNode]):
     leave: ASTVisitFn[TVisitedNode]
 
 
 EnterLeaveVisitor = Union[EnterVisitor[TVisitedNode], LeaveVisitor[TVisitedNode]]
 
 
-# The reason why not define ASTVisitFn as Protocol, is that ASTVisitFn use TVisitedNode as argument,
-# which means convariant TVisitedNode must be contravariant.
-
 # A visitor is comprised of visit functions, which are called on each node
 # during the visitor's traversal.
-# ASTVisitFn = Callable[
-#     [
-#         # self
-#         Any,
-#         # node
-#         # The current node being visiting.
-#         TVisitedNode,
-#         # key
-#         # The index or key to this node from the parent node or Array.
-#         Optional[Union[str, int]],
-#         # parent
-#         # The parent immediately above this node, which may be an Array.
-#         Optional[Union[ASTNode, list[ASTNode]]],
-#         # path
-#         # The key path to get to this node from the root node.
-#         Sequence[Union[str, int]],
-#         # ancestors
-#         # All nodes and Arrays visited before reaching parent of this node.
-#         # These correspond to array indices in `path`.
-#         # Note: ancestors includes arrays which contain the parent of visited node.
-#         Sequence[Union[ASTNode, Sequence[ASTNode]]],
-#     ],
-#     Any,
-# ]
+ASTVisitFn = Callable[
+    [
+        # node
+        # The current node being visiting.
+        TVisitedNode,
+        # key
+        # The index or key to this node from the parent node or Array.
+        Optional[Union[str, int]],
+        # parent
+        # The parent immediately above this node, which may be an Array.
+        Optional[Union[ASTNode, list[ASTNode]]],
+        # path
+        # The key path to get to this node from the root node.
+        Sequence[Union[str, int]],
+        # ancestors
+        # All nodes and Arrays visited before reaching parent of this node.
+        # These correspond to array indices in `path`.
+        # Note: ancestors includes arrays which contain the parent of visited node.
+        Sequence[Union[ASTNode, Sequence[ASTNode]]],
+    ],
+    Any,
+]
 
 
-_TVisitedNode1 = TypeVar('_TVisitedNode1', bound=ASTNode, contravariant=True)
-
-
-class ASTVisitFn(Protocol[_TVisitedNode1]):
-    def __call__(
-        self,
-        node: _TVisitedNode1,
-        key: Optional[Union[str, int]],
-        parent: Optional[Union[ASTNode, list[ASTNode]]],
-        path: Sequence[Union[str, int]],
-        ancestors: Sequence[Union[ASTNode, Sequence[ASTNode]]],
-    ) -> Any:
-        ...
+@runtime_checkable
+class ASTVisitMethod(Protocol, Generic[TVisitedNode]):
+    __call__: ASTVisitFn[TVisitedNode]
+    __func__: Callable[
+        [
+            # self
+            ASTVisitor,
+            # node
+            # The current node being visiting.
+            TVisitedNode,
+            # key
+            # The index or key to this node from the parent node or Array.
+            Optional[Union[str, int]],
+            # parent
+            # The parent immediately above this node, which may be an Array.
+            Optional[Union[ASTNode, list[ASTNode]]],
+            # path
+            # The key path to get to this node from the root node.
+            Sequence[Union[str, int]],
+            # ancestors
+            # All nodes and Arrays visited before reaching parent of this node.
+            # These correspond to array indices in `path`.
+            # Note: ancestors includes arrays which contain the parent of visited node.
+            Sequence[Union[ASTNode, Sequence[ASTNode]]],
+        ],
+        Any,
+    ]
 
 
 ASTNodeType = TypeVar('ASTNodeType', bound=ASTNode, covariant=True)
@@ -738,7 +745,7 @@ class _Stack:
     in_array: bool
     index: int
     keys: Union[Sequence[ASTNode], Sequence[str]]
-    edits: list[tuple[Union[str, int], Any]]
+    edits: list[tuple[Optional[Union[str, int]], Any]]
     prev: Optional[_Stack]
 
 
@@ -823,10 +830,10 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
     """
 
     stack: Optional[_Stack] = None
-    in_array = Array.is_array(root)
+    in_array: bool = Array.is_array(root)
     keys: Union[Sequence[ASTNode], Sequence[str]] = [root]
-    index = -1
-    edits: list[tuple[Union[str, int], Any]] = []
+    index: int = -1
+    edits: list[tuple[Optional[Union[str, int]], Any]] = []
     node: Optional[Union[list[ASTNode], ASTNode]] = None
     key: Optional[Union[str, int]] = None
     parent: Optional[Union[ASTNode, list[ASTNode]]] = None
@@ -839,10 +846,14 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
         is_leaving = index == len(keys)
         is_edited = is_leaving and len(edits) != 0
         if is_leaving:
-            # Type Guards
-            assert isinstance(stack, _Stack)
+            # Type Guard
+            assert stack is not None
 
             key = None if len(ancestors) == 0 else path[-1]
+
+            # Type Guard
+            assert parent is not None
+
             node = parent
             parent = ancestors.pop()
             if is_edited:
@@ -859,9 +870,7 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                     node = copy(node)
 
                 edit_offset = 0
-                for ii in range(len(edits)):
-                    edit_key = edits[ii][0]
-                    edit_value = edits[ii][1]
+                for edit_key, edit_value in edits:
                     if in_array:
                         # Type Guard
                         assert isinstance(edit_key, int)
@@ -877,10 +886,17 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                         edit_offset += 1
                     else:
                         # Type Guard
-                        assert isinstance(edit_key, str)
-                        assert is_node(node)
+                        # assert is_node(edit_value) or (isinstance(edit_value, list) and all(is_node(ev) for ev in edit_value))
 
-                        node[edit_key] = edit_value
+                        if is_node(node):
+                            assert isinstance(edit_key, str)
+
+                            node[edit_key] = edit_value
+                        else:
+                            assert isinstance(node, list)
+                            assert isinstance(edit_key, int)
+
+                            node[edit_key] = edit_value
 
             index = stack.index
             keys = stack.keys
@@ -894,8 +910,8 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                     key = index
                 else:
                     # Type Guard
+                    assert isinstance(keys, list)
                     assert isinstance(keys[0], str)
-                    keys = cast(list[str], keys)
 
                     key = keys[index]
             else:
@@ -906,14 +922,11 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                 if isinstance(parent, list):
                     # Type Guard
                     assert isinstance(key, int)
-
-                    node = parent[key]  # pylint: disable=unsubscriptable-object
-                else:  # is_node(parent)
-                    # Type Guard
+                else:
+                    assert is_node(parent)
                     assert isinstance(key, str)
 
                     node = parent[key]  # pylint: disable=unsubscriptable-object
-
             else:
                 node = new_root
 
@@ -931,10 +944,7 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
                 raise Exception(f'Invalid AST Node: {inspect(node)}.')
             visit_fn = get_visit_fn(visitor, node.kind, is_leaving)
             if visit_fn is not None:
-                # Type Guard
-                assert parent is not None
-
-                result = visit_fn(node, key, parent, path, ancestors)
+                result = visit_fn.__func__(visitor, node, key, parent, path, ancestors)
 
                 if result is BREAK:
                     break
@@ -957,7 +967,7 @@ def visit(root: ASTNode, visitor: ASTVisitor) -> ASTNode:
 
         if result is undefined and is_edited:
             # Type Guard
-            key = cast(Union[str, int], key)
+            assert key is not None
 
             edits.append((key, node))
 
@@ -1057,8 +1067,10 @@ def visit_in_parallel(visitors: Sequence[ASTVisitor]) -> ASTVisitor:
     return _ParallelVisitor()
 
 
-def get_visit_fn(visitor: ASTVisitor, kind: str, is_leaving: bool) -> Optional[ASTVisitFn[ASTNode]]:
-    kind_visitor: Optional[ASTVisitFn[ASTNode] | EnterLeaveVisitor[ASTNode]] = getattr(
+def get_visit_fn(
+    visitor: ASTVisitor, kind: str, is_leaving: bool
+) -> Optional[ASTVisitMethod[ASTNode]]:
+    kind_visitor: Optional[ASTVisitMethod[ASTNode] | EnterLeaveVisitor[ASTNode]] = getattr(
         visitor, kind
     )
     if kind_visitor is not None:
@@ -1066,27 +1078,29 @@ def get_visit_fn(visitor: ASTVisitor, kind: str, is_leaving: bool) -> Optional[A
             if is_leaving:
                 return None
             else:
-                kind_visitor = cast(ASTVisitFn[ASTNode], kind_visitor)
+                # Type Guard
+                assert isinstance(kind_visitor, ASTVisitMethod)
+
                 return kind_visitor
 
         if is_leaving:
+            # Type Guard
             kind_visitor = cast(EnterVisitor[ASTNode], kind_visitor)
-            # mypy complains: Incompatible return value type
-            # pyright: 0 errors, 0 warnings, 0 infos
-            return kind_visitor.enter  # type: ignore[return-value]
+
+            return cast(ASTVisitMethod[ASTNode], kind_visitor.enter)
         else:
+            # Type Guard
             kind_visitor = cast(LeaveVisitor[ASTNode], kind_visitor)
-            # mypy complains: Incompatible return value type
-            # pyright: 0 errors, 0 warnings, 0 infos
-            return kind_visitor.leave  # type: ignore[return-value]
+
+            return cast(ASTVisitMethod[ASTNode], kind_visitor.leave)
 
     if is_leaving:
-        kind_visitor = cast(EnterVisitor[ASTNode], kind_visitor)
-        # mypy complains: Incompatible return value type
-        # pyright: 0 errors, 0 warnings, 0 infos
-        return kind_visitor.enter  # type: ignore[return-value]
+        # Type Guard
+        visitor = cast(EnterVisitor[ASTNode], visitor)
+
+        return cast(ASTVisitMethod[ASTNode], visitor.enter)
     else:
-        kind_visitor = cast(LeaveVisitor[ASTNode], kind_visitor)
-        # mypy complains: Incompatible return value type
-        # pyright: 0 errors, 0 warnings, 0 infos
-        return kind_visitor.leave  # type: ignore[return-value]
+        # Type Guard
+        visitor = cast(LeaveVisitor[ASTNode], visitor)
+
+        return cast(ASTVisitMethod[ASTNode], visitor.leave)

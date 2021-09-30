@@ -1,15 +1,25 @@
-from __future__ import annotations
-from dataclasses import dataclass
 from typing import Optional
 
 
-@dataclass
-class Stack:
-    index: int
-    prev: Optional[Stack] = None
+is_leaving = False
+parent: Optional[object] = None
+node: Optional[object] = None
+
+loop = -1
 
 
-s = Stack(index=0)
+while True:
+    if is_leaving:
+        assert parent is not None
 
-reveal_type(s)
-reveal_type(s.index)
+        node = parent
+        reveal_type(node)
+        is_leaving = False
+
+    else:
+        loop += 1
+        parent = object()
+        is_leaving = True
+
+    if loop >= 2:
+        break
